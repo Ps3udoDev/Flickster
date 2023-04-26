@@ -1,8 +1,20 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { ConfigService } from '@nestjs/config';
+import * as morgan from 'morgan';
+import { CORS } from './config/cors';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  await app.listen(3000);
+
+  app.use(morgan('dev'));
+
+  const configService = app.get(ConfigService);
+
+  app.enableCors(CORS);
+
+  app.setGlobalPrefix('api/v1/Flickster');
+
+  await app.listen(configService.get('PORT'));
 }
 bootstrap();
