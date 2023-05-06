@@ -1,4 +1,10 @@
-import { IsBoolean, IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { ROLES } from 'src/constants/roles';
 
 export class UserDTO {
@@ -23,6 +29,7 @@ export class UserDTO {
   password: string;
 
   @IsString()
+  @IsOptional()
   token: string;
 
   @IsNotEmpty()
@@ -41,5 +48,6 @@ export class UserDTO {
   role: ROLES;
 
   @IsBoolean()
+  @IsOptional()
   isActive: boolean;
 }

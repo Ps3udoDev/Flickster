@@ -2,6 +2,7 @@ import { Column, Entity } from 'typeorm';
 import { ROLES } from '../../../constants/roles';
 import { BaseEntity } from '../../../database/config/base.entity';
 import { I_User } from '../../../interfaces/user.interface';
+import { Exclude } from 'class-transformer';
 
 @Entity({ name: 'users' })
 export class UserEntity extends BaseEntity implements I_User {
@@ -18,9 +19,10 @@ export class UserEntity extends BaseEntity implements I_User {
   username: string;
 
   @Column()
+  @Exclude()
   password: string;
 
-  @Column()
+  @Column({ nullable: true })
   token: string;
 
   @Column()
@@ -32,9 +34,9 @@ export class UserEntity extends BaseEntity implements I_User {
   @Column()
   imageURL: string;
 
-  @Column({ type: 'enum', enum: ROLES })
+  @Column({ type: 'enum', enum: ROLES, default: 'NORMAL' })
   role: ROLES;
 
-  @Column()
+  @Column({ default: false })
   isActive: boolean;
 }
