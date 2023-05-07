@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { UserDTO } from 'src/modules/users/dtos/user.dto';
 import { UsersService } from 'src/modules/users/services/users.service';
 import { AuthService } from '../services/auth.service';
@@ -8,7 +16,11 @@ import { readFileSync } from 'fs';
 import { compile } from 'handlebars';
 import { ErrorManager } from 'src/utils/error.manager';
 import { MailerService } from '@nestjs-modules/mailer';
-import { RestorePasswordDTO } from 'src/modules/users/dtos/restorePassword.dto';
+import {
+  EmailRestorePasswordDTO,
+  PasswordRestorePasswordDTO,
+} from 'src/modules/users/dtos/restorePassword.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('auth')
 export class AuthController {
@@ -30,6 +42,7 @@ export class AuthController {
         {
           id: user.id,
           email: user.email,
+          role: user.role,
         },
         process.env.JWT_SECRET_WORD,
         { expiresIn: '24h' },
@@ -77,7 +90,7 @@ export class AuthController {
   }
 
   @Post('forget-password')
-  async forgetPassword(@Body() body: RestorePasswordDTO) {
+  async forgetPassword(@Body() body: EmailRestorePasswordDTO) {
     try {
       const { email } = body;
       const userAndToken = await this.authService.createRecoveryToken(email);
@@ -114,9 +127,10 @@ export class AuthController {
   @Post('change-password/:token')
   async restorePassword(
     @Param('token') token: string,
-    @Body() password: string,
+    @Body() body: PasswordRestorePasswordDTO,
   ) {
     try {
+      const { password } = body;
       let tokenInfo;
       try {
         tokenInfo = JSON.parse(atob(token.split('.')[1]));
@@ -138,6 +152,7 @@ export class AuthController {
   }
 
   @Get('me')
+  @UseGuards(AuthGuard('jwt'))
   async userToken(@Req() req) {
     try {
       const id = req.user.id;
