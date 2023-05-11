@@ -1,4 +1,4 @@
-export const PUBLIC_KEY = 'PIBLIC';
+export const PUBLIC_KEY = 'PUBLIC';
 
 export const ROLES_KEY = 'ROLES';
 

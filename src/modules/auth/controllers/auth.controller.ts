@@ -4,7 +4,7 @@ import {
   Get,
   Param,
   Post,
-  Req,
+  Request,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -22,8 +22,8 @@ import {
   EmailRestorePasswordDTO,
   PasswordRestorePasswordDTO,
 } from 'src/modules/users/dtos/restorePassword.dto';
-import { AuthGuard } from '@nestjs/passport';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { AuthGuard } from '../guards/auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -162,10 +162,10 @@ export class AuthController {
   }
 
   @Get('me')
-  @UseGuards(AuthGuard('jwt'))
-  async userToken(@Req() req) {
+  @UseGuards(AuthGuard)
+  async userToken(@Request() req: any) {
     try {
-      const id = req.user.id;
+      const id = req.id;
       const user = await this.authService.userToken(id);
       return {
         results: user,
