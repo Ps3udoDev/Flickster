@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Query,
+  Request,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -17,22 +18,26 @@ import { RolesGuard } from 'src/modules/auth/guards/roles.guard';
 import { Roles } from 'src/modules/auth/decorators/roles.decorator';
 import { AuthGuard } from 'src/modules/auth/guards/auth.guard';
 import { PublicAcces } from 'src/modules/auth/decorators/public.decorator';
+import { OptionalAuthGuard } from 'src/modules/auth/guards/optional-auth.guard';
+import { ProfileAuthorizationGuard } from 'src/modules/auth/guards/profile-authorization.guard';
 
 @Controller('users')
-@UseGuards(AuthGuard, RolesGuard)
 export class UsersController {
   constructor(private readonly userService: UsersService) {}
 
-  @Roles('ADMIN')
   @Get()
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles('ADMIN')
   async getAllUsers(@Query() query: any) {
     return await this.userService.findAndCount(query);
   }
 
   @Get(':id')
-  @PublicAcces()
-  async getUserById(@Param('id') id: string) {
-    return await this.userService.findUserById(id);
+  @UseGuards(OptionalAuthGuard, ProfileAuthorizationGuard)
+  async getUserById(@Param('id') id: string, @Request() req: any) {
+    const loggedId = req.id;
+    console.log(loggedId);
+    return await this.userService.findUserById(id, loggedId);
   }
 
   @Patch(':id')

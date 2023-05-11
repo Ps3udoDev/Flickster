@@ -57,7 +57,7 @@ export class UsersService {
     }
   }
 
-  async findUserById(id: string): Promise<UserEntity> {
+  async findUserByIdOr404(id: string): Promise<UserEntity> {
     try {
       const user = await this.userRepository
         .createQueryBuilder('user')
@@ -71,6 +71,54 @@ export class UsersService {
         });
 
       return user;
+    } catch (error) {
+      const errorMessage = error.type
+        ? `${error.type} :: ${error.message}`
+        : error.message;
+      throw ErrorManager.createSignatureError(errorMessage);
+    }
+  }
+  async findUserById(id: string, loggedId: string): Promise<UserEntity> {
+    try {
+      const user = await this.userRepository
+        .createQueryBuilder('user')
+        .where({ id })
+        .getOne();
+
+      if (!user)
+        throw new ErrorManager({
+          type: 'BAD_REQUEST',
+          message: 'User not found',
+        });
+
+      if (id === loggedId) {
+        return user;
+      } else {
+        const {
+          id,
+          firstName,
+          lastName,
+          username,
+          codePhone,
+          phone,
+          email,
+          imageURL,
+          createdAt,
+          isActive,
+        } = user;
+        return {
+          id,
+          firstName,
+          lastName,
+          username,
+          codePhone,
+          phone,
+          email,
+          imageURL,
+          createdAt,
+          isActive,
+        } as UserEntity;
+      }
     } catch (error) {
       const errorMessage = error.type
         ? `${error.type} :: ${error.message}`

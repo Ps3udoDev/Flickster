@@ -48,7 +48,7 @@ export class AuthGuard implements CanActivate {
 
     const { id } = manageToken;
 
-    const user = await this.userService.findUserById(id);
+    const user = await this.userService.findUserByIdOr404(id);
 
     if (!user) throw new UnauthorizedException('Invalid User');
 
