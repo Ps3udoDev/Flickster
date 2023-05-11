@@ -41,6 +41,7 @@ export class UserDTO {
   phone: string;
 
   @IsString()
+  @IsOptional()
   imageURL: string;
 
   @IsNotEmpty()

@@ -9,11 +9,16 @@ import { GenresModule } from './modules/genres/genres.module';
 import { SeriesModule } from './modules/series/series.module';
 import { SeasonsModule } from './modules/seasons/seasons.module';
 import { EpisodesModule } from './modules/episodes/episodes.module';
+import { MulterModule } from '@nestjs/platform-express';
+import * as multer from 'multer';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ envFilePath: '.env', isGlobal: true }),
     TypeOrmModule.forRoot({ ...DataSourceConfig }),
+    MulterModule.register({
+      storage: multer.memoryStorage(),
+    }),
     UsersModule,
     AuthModule,
     MoviesModule,

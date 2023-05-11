@@ -23,6 +23,7 @@ export class UpdateUserDTO {
   password: string;
 
   @IsString()
+  @IsOptional()
   token: string;
 
   @IsOptional()
@@ -34,6 +35,7 @@ export class UpdateUserDTO {
   phone: string;
 
   @IsString()
+  @IsOptional()
   imageURL: string;
 
   @IsOptional()
@@ -41,5 +43,6 @@ export class UpdateUserDTO {
   role: ROLES;
 
   @IsBoolean()
+  @IsOptional()
   isActive: boolean;
 }

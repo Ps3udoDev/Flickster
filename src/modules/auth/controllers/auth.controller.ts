@@ -5,7 +5,9 @@ import {
   Param,
   Post,
   Req,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { UserDTO } from 'src/modules/users/dtos/user.dto';
 import { UsersService } from 'src/modules/users/services/users.service';
@@ -21,6 +23,7 @@ import {
   PasswordRestorePasswordDTO,
 } from 'src/modules/users/dtos/restorePassword.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('auth')
 export class AuthController {
@@ -57,9 +60,13 @@ export class AuthController {
   }
 
   @Post('sign-up')
-  async signUp(@Body() body: UserDTO) {
+  @UseInterceptors(FileInterceptor('profileImage'))
+  async signUp(
+    @Body() body: UserDTO,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
     try {
-      const user = await this.userService.createUser(body);
+      const user = await this.userService.createUser(body, file);
       const errors = [];
       const template = readFileSync('./views/welcome.html', 'utf-8');
       const compiledTemplate = compile(template);
@@ -85,7 +92,10 @@ export class AuthController {
         errors,
       };
     } catch (error) {
-      throw ErrorManager.createSignatureError(error.message);
+      const errorMessage = error.type
+        ? `${error.type} :: ${error.message}`
+        : error.message;
+      throw ErrorManager.createSignatureError(errorMessage);
     }
   }
 
