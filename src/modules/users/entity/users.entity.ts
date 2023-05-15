@@ -31,7 +31,7 @@ export class UserEntity extends BaseEntity implements I_User {
   @Column()
   phone: string;
 
-  @Column()
+  @Column({ nullable: true })
   imageURL: string;
 
   @Column({ type: 'enum', enum: ROLES, default: 'NORMAL' })

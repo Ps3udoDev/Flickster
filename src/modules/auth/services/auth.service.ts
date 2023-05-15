@@ -53,7 +53,7 @@ export class AuthService {
   }
 
   async userToken(id: string): Promise<UserEntity> {
-    const user = await this.userService.findUserById(id);
+    const user = await this.userService.findUserByIdOr404(id);
     if (!user)
       throw new ErrorManager({
         type: 'NOT_FOUND',

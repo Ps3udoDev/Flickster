@@ -4,8 +4,10 @@ import {
   Get,
   Param,
   Post,
-  Req,
+  Request,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { UserDTO } from 'src/modules/users/dtos/user.dto';
 import { UsersService } from 'src/modules/users/services/users.service';
@@ -20,8 +22,22 @@ import {
   EmailRestorePasswordDTO,
   PasswordRestorePasswordDTO,
 } from 'src/modules/users/dtos/restorePassword.dto';
-import { AuthGuard } from '@nestjs/passport';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { AuthGuard } from '../guards/auth.guard';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiBody,
+  ApiConflictResponse,
+  ApiConsumes,
+  ApiCreatedResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -30,6 +46,34 @@ export class AuthController {
     private readonly mailerService: MailerService,
   ) {}
 
+  @ApiConsumes('application/x-www-form-urlencoded')
+  @ApiBody({
+    description:
+      'Endpoint used for user login. Generates a token for registered users to access the application.',
+    schema: {
+      type: 'object',
+      properties: {
+        email: {
+          type: 'string',
+          description: 'User email',
+        },
+        password: {
+          type: 'string',
+          description: 'User password',
+        },
+      },
+      required: ['email', 'password'],
+    },
+  })
+  @ApiCreatedResponse({
+    description: 'Correct Credentials',
+  })
+  @ApiBadRequestResponse({
+    description: 'Bad Request. User not found.',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized. Wrong credentials.',
+  })
   @Post('login')
   async login(@Body() body: LoginDTO) {
     try {
@@ -56,10 +100,89 @@ export class AuthController {
     }
   }
 
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Fields needed to register a new user',
+    schema: {
+      type: 'object',
+      properties: {
+        firstName: {
+          type: 'string',
+        },
+        lastName: {
+          type: 'string',
+        },
+        email: {
+          type: 'string',
+        },
+        username: {
+          type: 'string',
+        },
+        password: {
+          type: 'string',
+        },
+        codePhone: {
+          type: 'string',
+        },
+        phone: {
+          type: 'string',
+        },
+        profileImage: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+      required: [
+        'firstName',
+        'lastName',
+        'email',
+        'username',
+        'password',
+        'codePhone',
+        'phone',
+      ],
+    },
+    required: true,
+  })
+  @ApiCreatedResponse({
+    description: 'Success Sign Up',
+    schema: {
+      type: 'object',
+      properties: {
+        results: {
+          type: 'string',
+        },
+        errors: {
+          type: 'array',
+          items: {
+            type: 'string',
+          },
+        },
+      },
+    },
+  })
+  @ApiConflictResponse({
+    description: 'Duplicate key violation: Email or username already exists',
+    schema: {
+      type: 'object',
+      properties: {
+        message: {
+          type: 'string',
+        },
+      },
+    },
+  })
+  @ApiConflictResponse({
+    description: 'Duplicate key violation: Email or username already exists',
+  })
   @Post('sign-up')
-  async signUp(@Body() body: UserDTO) {
+  @UseInterceptors(FileInterceptor('profileImage'))
+  async signUp(
+    @Body() body: UserDTO,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
     try {
-      const user = await this.userService.createUser(body);
+      const user = await this.userService.createUser(body, file);
       const errors = [];
       const template = readFileSync('./views/welcome.html', 'utf-8');
       const compiledTemplate = compile(template);
@@ -85,10 +208,71 @@ export class AuthController {
         errors,
       };
     } catch (error) {
-      throw ErrorManager.createSignatureError(error.message);
+      const errorMessage = error.type
+        ? `${error.type} :: ${error.message}`
+        : error.message;
+      throw ErrorManager.createSignatureError(errorMessage);
     }
   }
 
+  @ApiConsumes('application/x-www-form-urlencoded')
+  @ApiBody({
+    description: 'Email to request password reset',
+    schema: {
+      type: 'object',
+      properties: {
+        email: {
+          type: 'string',
+        },
+      },
+      required: ['email'],
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Validation failed',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: {
+          type: 'number',
+        },
+        message: {
+          type: 'array',
+          items: {
+            type: 'string',
+          },
+        },
+        error: {
+          type: 'string',
+        },
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'User not found',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: {
+          type: 'number',
+        },
+        message: {
+          type: 'string',
+        },
+      },
+    },
+  })
+  @ApiCreatedResponse({
+    description: 'Password reset email sent successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        results: {
+          type: 'string',
+        },
+      },
+    },
+  })
   @Post('forget-password')
   async forgetPassword(@Body() body: EmailRestorePasswordDTO) {
     try {
@@ -124,6 +308,69 @@ export class AuthController {
     }
   }
 
+  @ApiConsumes('application/x-www-form-urlencoded')
+  @ApiBody({
+    description: 'New password',
+    schema: {
+      type: 'object',
+      properties: {
+        password: {
+          type: 'string',
+        },
+      },
+      required: ['password'],
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Validation failed',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: {
+          type: 'number',
+        },
+        message: {
+          type: 'array',
+          items: {
+            type: 'string',
+          },
+        },
+        error: {
+          type: 'string',
+        },
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: {
+          type: 'number',
+        },
+        message: {
+          type: 'string',
+        },
+      },
+    },
+  })
+  @ApiOkResponse({
+    description: 'Password updated successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        results: {
+          type: 'object',
+          properties: {
+            message: {
+              type: 'string',
+            },
+          },
+        },
+      },
+    },
+  })
   @Post('change-password/:token')
   async restorePassword(
     @Param('token') token: string,
@@ -151,11 +398,100 @@ export class AuthController {
     }
   }
 
+  @ApiBearerAuth()
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Missing Authorization header',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: {
+          type: 'number',
+        },
+        message: {
+          type: 'string',
+        },
+        error: {
+          type: 'string',
+        },
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Token expired',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: {
+          type: 'number',
+        },
+        message: {
+          type: 'string',
+        },
+        error: {
+          type: 'string',
+        },
+      },
+    },
+  })
+  @ApiOkResponse({
+    description: 'User details',
+    schema: {
+      type: 'object',
+      properties: {
+        results: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+            },
+            createdAt: {
+              type: 'string',
+            },
+            updatedAt: {
+              type: 'string',
+            },
+            firstName: {
+              type: 'string',
+            },
+            lastName: {
+              type: 'string',
+            },
+            email: {
+              type: 'string',
+            },
+            username: {
+              type: 'string',
+            },
+            token: {
+              type: 'string',
+              nullable: true,
+            },
+            codePhone: {
+              type: 'string',
+            },
+            phone: {
+              type: 'string',
+            },
+            imageURL: {
+              type: 'string',
+            },
+            role: {
+              type: 'string',
+              enum: ['ADMIN', 'NORMAL'],
+            },
+            isActive: {
+              type: 'boolean',
+            },
+          },
+        },
+      },
+    },
+  })
   @Get('me')
-  @UseGuards(AuthGuard('jwt'))
-  async userToken(@Req() req) {
+  @UseGuards(AuthGuard)
+  async userToken(@Request() req: any) {
     try {
-      const id = req.user.id;
+      const id = req.id;
       const user = await this.authService.userToken(id);
       return {
         results: user,

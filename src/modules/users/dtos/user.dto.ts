@@ -41,10 +41,12 @@ export class UserDTO {
   phone: string;
 
   @IsString()
+  @IsOptional()
   imageURL: string;
 
   @IsNotEmpty()
   @IsEnum(ROLES)
+  @IsOptional()
   role: ROLES;
 
   @IsBoolean()

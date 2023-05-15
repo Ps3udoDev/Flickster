@@ -7,6 +7,8 @@ import { PaginatedResult } from 'src/interfaces/paginated.results.interface';
 import { UpdateUserDTO } from '../dtos/updateUser.dto';
 import { ErrorManager } from 'src/utils/error.manager';
 import { hashedPassword } from 'src/libs/bcrypt';
+import { deleteFile, uploadFile } from 'src/libs/awsS3';
+import { ROLES } from 'src/constants/roles';
 
 @Injectable()
 export class UsersService {
@@ -49,11 +51,14 @@ export class UsersService {
         results: users,
       };
     } catch (error) {
-      throw ErrorManager.createSignatureError(error.message);
+      const errorMessage = error.type
+        ? `${error.type} :: ${error.message}`
+        : error.message;
+      throw ErrorManager.createSignatureError(errorMessage);
     }
   }
 
-  async findUserById(id: string): Promise<UserEntity> {
+  async findUserByIdOr404(id: string): Promise<UserEntity> {
     try {
       const user = await this.userRepository
         .createQueryBuilder('user')
@@ -68,7 +73,58 @@ export class UsersService {
 
       return user;
     } catch (error) {
-      throw ErrorManager.createSignatureError(error.message);
+      const errorMessage = error.type
+        ? `${error.type} :: ${error.message}`
+        : error.message;
+      throw ErrorManager.createSignatureError(errorMessage);
+    }
+  }
+  async findUserById(id: string, loggedId: string): Promise<UserEntity> {
+    try {
+      const user = await this.userRepository
+        .createQueryBuilder('user')
+        .where({ id })
+        .getOne();
+
+      if (!user)
+        throw new ErrorManager({
+          type: 'BAD_REQUEST',
+          message: 'User not found',
+        });
+
+      if (id === loggedId) {
+        return user;
+      } else {
+        const {
+          id,
+          firstName,
+          lastName,
+          username,
+          codePhone,
+          phone,
+          email,
+          imageURL,
+          createdAt,
+          isActive,
+        } = user;
+        return {
+          id,
+          firstName,
+          lastName,
+          username,
+          codePhone,
+          phone,
+          email,
+          imageURL,
+          createdAt,
+          isActive,
+        } as UserEntity;
+      }
+    } catch (error) {
+      const errorMessage = error.type
+        ? `${error.type} :: ${error.message}`
+        : error.message;
+      throw ErrorManager.createSignatureError(errorMessage);
     }
   }
 
@@ -87,24 +143,42 @@ export class UsersService {
         });
       return user;
     } catch (error) {
-      throw ErrorManager.createSignatureError(error.message);
+      const errorMessage = error.type
+        ? `${error.type} :: ${error.message}`
+        : error.message;
+      throw ErrorManager.createSignatureError(errorMessage);
     }
   }
 
-  async createUser(body: UserDTO): Promise<UserEntity> {
+  async createUser(
+    body: UserDTO,
+    file: Express.Multer.File,
+  ): Promise<UserEntity> {
     const queryRunner =
       this.userRepository.manager.connection.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
       body.password = hashedPassword(body.password);
+      body.role = ROLES.NORMAL;
       const user = await this.userRepository.create(body);
-      const savedUser = await queryRunner.manager.save(user);
+      const savedUser = await this.userRepository.save(user);
+      let imageURL = '';
+      if (file) {
+        imageURL = await this.uploadImage(savedUser.id, file);
+      }
+      const updatedUser = await this.userRepository.save({
+        ...savedUser,
+        imageURL,
+      });
       await queryRunner.commitTransaction();
-      return savedUser;
+      return updatedUser;
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      throw ErrorManager.createSignatureError(error.message);
+      const errorMessage = error.type
+        ? `${error.type} :: ${error.message}`
+        : error.message;
+      throw ErrorManager.createSignatureError(errorMessage);
     } finally {
       await queryRunner.release();
     }
@@ -113,6 +187,7 @@ export class UsersService {
   async updateUser(
     body: UpdateUserDTO,
     id: string,
+    file: Express.Multer.File,
   ): Promise<UpdateResult | undefined> {
     const queryRunner =
       this.userRepository.manager.connection.createQueryRunner();
@@ -130,7 +205,15 @@ export class UsersService {
           type: 'BAD_REQUEST',
           message: 'User not found',
         });
-
+      if (file) {
+        if (userToUpdate.imageURL) {
+          const awsDomain = process.env.AWS_DOMAIN;
+          const imageKey = userToUpdate.imageURL.replace(awsDomain, '');
+          await deleteFile(imageKey);
+        }
+        const imageURL = await this.uploadImage(userToUpdate.id, file);
+        body.imageURL = imageURL;
+      }
       const user: UpdateResult = await queryRunner.manager.update(
         UserEntity,
         id,
@@ -144,7 +227,10 @@ export class UsersService {
       return user;
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      throw new ErrorManager.createSignatureError(error.message);
+      const errorMessage = error.type
+        ? `${error.type} :: ${error.message}`
+        : error.message;
+      throw ErrorManager.createSignatureError(errorMessage);
     } finally {
       await queryRunner.release();
     }
@@ -169,7 +255,10 @@ export class UsersService {
       return deleteResult;
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      throw new ErrorManager.createSignatureError(error.message);
+      const errorMessage = error.type
+        ? `${error.type} :: ${error.message}`
+        : error.message;
+      throw ErrorManager.createSignatureError(errorMessage);
     } finally {
       await queryRunner.release();
     }
@@ -194,7 +283,10 @@ export class UsersService {
       return user;
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      throw new ErrorManager.createSignatureError(error.message);
+      const errorMessage = error.type
+        ? `${error.type} :: ${error.message}`
+        : error.message;
+      throw ErrorManager.createSignatureError(errorMessage);
     } finally {
       await queryRunner.release();
     }
@@ -219,7 +311,10 @@ export class UsersService {
       return user;
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      throw new ErrorManager.createSignatureError(error.message);
+      const errorMessage = error.type
+        ? `${error.type} :: ${error.message}`
+        : error.message;
+      throw ErrorManager.createSignatureError(errorMessage);
     } finally {
       await queryRunner.release();
     }
@@ -275,7 +370,10 @@ export class UsersService {
       return user;
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      throw new ErrorManager.createSignatureError(error.message);
+      const errorMessage = error.type
+        ? `${error.type} :: ${error.message}`
+        : error.message;
+      throw ErrorManager.createSignatureError(errorMessage);
     } finally {
       await queryRunner.release();
     }
@@ -308,9 +406,47 @@ export class UsersService {
       return user;
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      throw new ErrorManager.createSignatureError(error.message);
+      const errorMessage = error.type
+        ? `${error.type} :: ${error.message}`
+        : error.message;
+      throw ErrorManager.createSignatureError(errorMessage);
     } finally {
       await queryRunner.release();
+    }
+  }
+
+  async uploadImage(id: string, file: Express.Multer.File): Promise<string> {
+    try {
+      if (!file)
+        throw new ErrorManager({
+          type: 'BAD_REQUEST',
+          message: 'No image received',
+        });
+
+      let fileKey = `public/users/images/image-${id}`;
+
+      if (file.mimetype === 'image/jpg') {
+        fileKey += '.jpg';
+      } else if (file.mimetype == 'image/jpeg') {
+        fileKey += '.jpeg';
+      } else if (file.mimetype == 'image/png') {
+        fileKey += '.png';
+      } else if (file.mimetype == 'image/gif') {
+        fileKey += '.gif';
+      } else {
+        throw new ErrorManager({
+          type: 'BAD_REQUEST',
+          message: 'Unsupported image type',
+        });
+      }
+
+      const URL = await uploadFile(file, fileKey);
+      return URL;
+    } catch (error) {
+      const errorMessage = error.type
+        ? `${error.type} :: ${error.message}`
+        : error.message;
+      throw ErrorManager.createSignatureError(errorMessage);
     }
   }
 }
