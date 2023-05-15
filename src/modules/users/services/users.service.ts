@@ -8,6 +8,7 @@ import { UpdateUserDTO } from '../dtos/updateUser.dto';
 import { ErrorManager } from 'src/utils/error.manager';
 import { hashedPassword } from 'src/libs/bcrypt';
 import { deleteFile, uploadFile } from 'src/libs/awsS3';
+import { ROLES } from 'src/constants/roles';
 
 @Injectable()
 export class UsersService {
@@ -159,6 +160,7 @@ export class UsersService {
     await queryRunner.startTransaction();
     try {
       body.password = hashedPassword(body.password);
+      body.role = ROLES.NORMAL;
       const user = await this.userRepository.create(body);
       const savedUser = await this.userRepository.save(user);
       let imageURL = '';

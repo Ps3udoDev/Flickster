@@ -9,11 +9,13 @@ export class ProfileAuthorizationGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
     const loggedInUserId = request.id;
     const requestedUserId = request.params.id;
-
+    if (request.role === 'ADMIN') {
+      return true;
+    }
     if (loggedInUserId === requestedUserId || !requestedUserId) {
       return true;
     }
 
-    return true;
+    return false;
   }
 }

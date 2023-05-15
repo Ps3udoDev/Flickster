@@ -46,6 +46,7 @@ export class UserDTO {
 
   @IsNotEmpty()
   @IsEnum(ROLES)
+  @IsOptional()
   role: ROLES;
 
   @IsBoolean()

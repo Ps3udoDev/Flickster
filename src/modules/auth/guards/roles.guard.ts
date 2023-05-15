@@ -34,7 +34,7 @@ export class RolesGuard implements CanActivate {
     const req = context.switchToHttp().getRequest<Request>();
 
     const { role } = req;
-    console.log(role);
+
     if (roles === undefined) {
       if (!admin) {
         return true;
@@ -42,7 +42,7 @@ export class RolesGuard implements CanActivate {
         return true;
       } else {
         throw new UnauthorizedException(
-          'You do not have permission for this operation',
+          'role is You do not have permission for this operation',
         );
       }
     }
@@ -53,7 +53,7 @@ export class RolesGuard implements CanActivate {
 
     if (!isAuth)
       throw new UnauthorizedException(
-        'You do not have permission for this operation',
+        ' is auth You do not have permission for this operation',
       );
 
     return true;
