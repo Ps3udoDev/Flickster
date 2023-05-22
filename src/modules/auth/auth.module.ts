@@ -7,6 +7,7 @@ import { UsersModule } from '../users/users.module';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from 'src/libs/jwt.strategy';
+import { Lambda } from 'aws-sdk';
 
 @Global()
 @Module({
@@ -30,6 +31,6 @@ import { JwtStrategy } from 'src/libs/jwt.strategy';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, UsersService, JwtStrategy],
+  providers: [AuthService, UsersService, JwtStrategy, Lambda],
 })
 export class AuthModule {}

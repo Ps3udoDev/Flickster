@@ -4,10 +4,19 @@ import { UserEntity } from 'src/modules/users/entity/users.entity';
 import { UsersService } from 'src/modules/users/services/users.service';
 import { ErrorManager } from 'src/utils/error.manager';
 import * as jwt from 'jsonwebtoken';
+import { Lambda } from 'aws-sdk';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly userService: UsersService) {}
+  private readonly lambda: Lambda;
+
+  constructor(private readonly userService: UsersService) {
+    this.lambda = new Lambda({
+      accessKeyId: process.env.AWS_ACCESS_KEY,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      region: process.env.AWS_BUCKET_REGION,
+    });
+  }
 
   async checkUsersCredentials(
     email: string,
@@ -60,5 +69,19 @@ export class AuthService {
         message: 'Not found User',
       });
     return user;
+  }
+
+  async sendEmail(emailAddress: string, name: string) {
+    const response = await this.lambda.invoke({
+      FunctionName: 'sendMailFlickster',
+      Payload: JSON.stringify({
+        emailAddress,
+        name,
+      }),
+    });
+
+    if (response) {
+      throw new Error('Error sending email');
+    }
   }
 }
