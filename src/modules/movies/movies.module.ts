@@ -8,5 +8,6 @@ import { MoviesController } from './controllers/movies.controller';
   imports: [TypeOrmModule.forFeature([MovieEntity])],
   providers: [MoviesService],
   controllers: [MoviesController],
+  exports: [MoviesService, TypeOrmModule],
 })
 export class MoviesModule {}

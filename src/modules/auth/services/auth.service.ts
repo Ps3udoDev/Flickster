@@ -70,18 +70,4 @@ export class AuthService {
       });
     return user;
   }
-
-  async sendEmail(emailAddress: string, name: string) {
-    const response = await this.lambda.invoke({
-      FunctionName: 'sendMailFlickster',
-      Payload: JSON.stringify({
-        emailAddress,
-        name,
-      }),
-    });
-
-    if (response) {
-      throw new Error('Error sending email');
-    }
-  }
 }
