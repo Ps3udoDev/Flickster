@@ -52,7 +52,7 @@ export class MoviesController {
     @Body() body: MovieDTO,
     @UploadedFiles() files: Array<Express.Multer.File>,
   ) {
-    const movie = this.movieService.createMovie(body, files);
+    const movie = await this.movieService.createMovie(body, files);
     return {
       results: movie,
       message: 'successful creation',
