@@ -61,6 +61,7 @@ export class SeriesService {
         ],
         take: numericSize,
         skip: (numericPage - 1) * numericSize,
+        relations: ['seasons'],
       });
 
       const totalPages = numericSize === 0 ? 1 : Math.ceil(count / numericSize);
@@ -83,7 +84,9 @@ export class SeriesService {
     await queryRunner.startTransaction();
 
     try {
-      const serie = await this.serieRepository.create(body);
+      const serie = await this.serieRepository.save({
+        ...body,
+      });
       await queryRunner.commitTransaction();
       return serie;
     } catch (error) {
