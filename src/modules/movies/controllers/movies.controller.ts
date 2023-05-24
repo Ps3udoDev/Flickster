@@ -106,4 +106,17 @@ export class MoviesController {
     }
     return await this.movieService.deleteMovie(id);
   }
+
+  @Post(':movieId/genres/:genreId')
+  async addGenreToMovie(
+    @Param('movieId') movieId: string,
+    @Param('genreId') genreId: string,
+  ) {
+    return this.movieService.addGenreToMovie(movieId, genreId);
+  }
+
+  @Get('genres/:genreId')
+  async getAllMoviesByGenre(@Param('genreId') genreId: string) {
+    return await this.movieService.getAllMoviesByGenre(genreId);
+  }
 }

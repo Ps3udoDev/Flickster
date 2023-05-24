@@ -7,12 +7,18 @@ import { ErrorManager } from 'src/utils/error.manager';
 import { deleteFile, uploadFile } from 'src/libs/awsS3';
 import { MovieDTO } from '../dto/movie.dto';
 import { UpdateMovieDTO } from '../dto/updateMovie.dto';
+import { GenreEntity } from 'src/modules/genres/entity/genres.entity';
+import { MoviesGenresEntity } from '../entity/moviesGenres.entity';
 
 @Injectable()
 export class MoviesService {
   constructor(
     @InjectRepository(MovieEntity)
     private readonly movieRepository: Repository<MovieEntity>,
+    @InjectRepository(GenreEntity)
+    private readonly genreRepository: Repository<GenreEntity>,
+    @InjectRepository(MoviesGenresEntity)
+    private readonly movieGenreRepository: Repository<MoviesGenresEntity>,
   ) {}
 
   async findAndCount(query: any): Promise<PaginatedResult<MovieEntity>> {
@@ -66,6 +72,7 @@ export class MoviesService {
         ],
         take: numericSize,
         skip: (numericPage - 1) * numericSize,
+        relations: ['moviesGenres.genre'],
       });
 
       const totalPages = numericSize === 0 ? 1 : Math.ceil(count / numericSize);
@@ -341,6 +348,55 @@ export class MoviesService {
       throw ErrorManager.createSignatureError(errorMessage);
     } finally {
       await queryRunner.release();
+    }
+  }
+
+  async addGenreToMovie(
+    movieId: string,
+    genreId: string,
+  ): Promise<MovieEntity> {
+    const movie = await this.movieRepository.findOne({
+      where: { id: movieId },
+      relations: ['moviesGenres'],
+    });
+    const genre = await this.genreRepository.findOne({
+      where: { id: genreId },
+    });
+
+    if (!movie || !genre) {
+      throw new ErrorManager({
+        type: 'BAD_REQUEST',
+        message: 'Movie or Genre not found',
+      });
+    }
+    const movieGenre = new MoviesGenresEntity();
+    movieGenre.movie = movie;
+    movieGenre.genre = genre;
+
+    await this.movieGenreRepository.save(movieGenre);
+
+    return movie;
+  }
+
+  async getAllMoviesByGenre(id: string): Promise<GenreEntity> {
+    try {
+      const genre = await this.genreRepository
+        .createQueryBuilder('genre')
+        .leftJoinAndSelect('genre.moviesIncludes', 'movieGenre')
+        .leftJoinAndSelect('movieGenre.movie', 'movie')
+        .where({ id })
+        .getOne();
+      if (!genre)
+        throw new ErrorManager({
+          type: 'NOT_FOUND',
+          message: 'Genre not found',
+        });
+      return genre;
+    } catch (error) {
+      const errorMessage = error.type
+        ? `${error.type} :: ${error.message}`
+        : error.message;
+      throw ErrorManager.createSignatureError(errorMessage);
     }
   }
 }

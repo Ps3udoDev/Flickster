@@ -48,7 +48,8 @@ export class GenresService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
-      const genre = await this.genreRepository.create(body);
+      const genre = await this.genreRepository.save({ ...body });
+      await queryRunner.commitTransaction();
       return genre;
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -69,7 +70,7 @@ export class GenresService {
         .getOne();
       if (!genre)
         throw new ErrorManager({
-          type: 'BAD_REQUEST',
+          type: 'NOT_FOUND',
           message: 'Genre not found',
         });
       return genre;
