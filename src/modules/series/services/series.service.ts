@@ -6,12 +6,18 @@ import { PaginatedResult } from 'src/interfaces/paginated.results.interface';
 import { ErrorManager } from 'src/utils/error.manager';
 import { SerieDTO } from '../dto/serie.dto';
 import { UpdateSerieDTO } from '../dto/updateSerie.dto';
+import { GenreEntity } from 'src/modules/genres/entity/genres.entity';
+import { SeriesGenresEntity } from '../entity/seriesGenres.entity';
 
 @Injectable()
 export class SeriesService {
   constructor(
     @InjectRepository(SerieEntity)
     private readonly serieRepository: Repository<SerieEntity>,
+    @InjectRepository(GenreEntity)
+    private readonly genreRepository: Repository<GenreEntity>,
+    @InjectRepository(SeriesGenresEntity)
+    private readonly serieGenreRepository: Repository<SeriesGenresEntity>,
   ) {}
 
   async findAndCount(query: any): Promise<PaginatedResult<SerieEntity>> {
@@ -61,7 +67,7 @@ export class SeriesService {
         ],
         take: numericSize,
         skip: (numericPage - 1) * numericSize,
-        relations: ['seasons'],
+        relations: ['seasons', 'seriesGenres.genre'],
       });
 
       const totalPages = numericSize === 0 ? 1 : Math.ceil(count / numericSize);
@@ -102,10 +108,10 @@ export class SeriesService {
 
   async findSerieByIdOr404(id: string): Promise<SerieEntity> {
     try {
-      const serie = await this.serieRepository
-        .createQueryBuilder('serie')
-        .where({ id })
-        .getOne();
+      const serie = await this.serieRepository.findOne({
+        where: { id },
+        relations: ['seasons', 'seriesGenres.genre'],
+      });
       if (!serie)
         throw new ErrorManager({
           type: 'BAD_REQUEST',
@@ -190,6 +196,55 @@ export class SeriesService {
       throw ErrorManager.createSignatureError(errorMessage);
     } finally {
       await queryRunner.release();
+    }
+  }
+
+  async addGenreToSerie(
+    serieId: string,
+    genreId: string,
+  ): Promise<SerieEntity> {
+    const serie = await this.serieRepository.findOne({
+      where: { id: serieId },
+      relations: ['seriesGenres'],
+    });
+    const genre = await this.genreRepository.findOne({
+      where: { id: genreId },
+    });
+
+    if (!serie || !genre) {
+      throw new ErrorManager({
+        type: 'BAD_REQUEST',
+        message: 'Serie or Genre not found',
+      });
+    }
+    const serieGenre = new SeriesGenresEntity();
+    serieGenre.serie = serie;
+    serieGenre.genre = genre;
+
+    await this.serieGenreRepository.save(serieGenre);
+
+    return serie;
+  }
+
+  async getAllSeriesByGenre(id: string): Promise<GenreEntity> {
+    try {
+      const genre = await this.genreRepository
+        .createQueryBuilder('genre')
+        .leftJoinAndSelect('genre.seriesIncludes', 'serieGenre')
+        .leftJoinAndSelect('serieGenre.serie', 'serie')
+        .where({ id })
+        .getOne();
+      if (!genre)
+        throw new ErrorManager({
+          type: 'NOT_FOUND',
+          message: 'Genre not found',
+        });
+      return genre;
+    } catch (error) {
+      const errorMessage = error.type
+        ? `${error.type} :: ${error.message}`
+        : error.message;
+      throw ErrorManager.createSignatureError(errorMessage);
     }
   }
 }

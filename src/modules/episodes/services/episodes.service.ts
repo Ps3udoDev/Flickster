@@ -6,6 +6,7 @@ import { EpisodeDTO } from '../dto/episode.dto';
 import { ErrorManager } from 'src/utils/error.manager';
 import { deleteFile, uploadFile } from 'src/libs/awsS3';
 import { UpdateEpisodeDTO } from '../dto/updateEpisode.dto';
+import { PaginatedResult } from 'src/interfaces/paginated.results.interface';
 
 @Injectable()
 export class EpisodesService {

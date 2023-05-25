@@ -4,9 +4,14 @@ import { SeriesController } from './controllers/series.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SerieEntity } from './entity/series.entity';
 import { UsersModule } from '../users/users.module';
+import { GenreEntity } from '../genres/entity/genres.entity';
+import { SeriesGenresEntity } from './entity/seriesGenres.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([SerieEntity]), UsersModule],
+  imports: [
+    TypeOrmModule.forFeature([SerieEntity, GenreEntity, SeriesGenresEntity]),
+    UsersModule,
+  ],
   providers: [SeriesService],
   controllers: [SeriesController],
   exports: [SeriesService, TypeOrmModule],

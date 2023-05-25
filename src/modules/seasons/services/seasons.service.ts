@@ -7,12 +7,15 @@ import { ErrorManager } from 'src/utils/error.manager';
 import { SeasonDTO } from '../dto/season.dto';
 import { deleteFile, uploadFile } from 'src/libs/awsS3';
 import { UpdateSeasonDTO } from '../dto/updateSeason.dto';
+import { EpisodeEntity } from 'src/modules/episodes/entity/episodes.entity';
 
 @Injectable()
 export class SeasonsService {
   constructor(
     @InjectRepository(SeasonEntity)
     private readonly seasonRepository: Repository<SeasonEntity>,
+    @InjectRepository(EpisodeEntity)
+    private readonly episodeRepository: Repository<EpisodeEntity>,
   ) {}
 
   async findAndCount(query: any): Promise<PaginatedResult<SeasonEntity>> {
@@ -134,6 +137,21 @@ export class SeasonsService {
 
       const URL = await uploadFile(file, fileKey);
       return URL;
+    } catch (error) {
+      const errorMessage = error.type
+        ? `${error.type} :: ${error.message}`
+        : error.message;
+      throw ErrorManager.createSignatureError(errorMessage);
+    }
+  }
+
+  async getSeasonById(id: string): Promise<SeasonEntity> {
+    try {
+      const season = await this.seasonRepository.findOne({
+        where: { id },
+        relations: ['episodes'],
+      });
+      return season;
     } catch (error) {
       const errorMessage = error.type
         ? `${error.type} :: ${error.message}`
@@ -270,6 +288,45 @@ export class SeasonsService {
       throw ErrorManager.createSignatureError(errorMessage);
     } finally {
       await queryRunner.release();
+    }
+  }
+
+  async getEpisodesBySeason(
+    seasonId: string,
+    query: any,
+  ): Promise<PaginatedResult<EpisodeEntity>> {
+    try {
+      const { size = 10, page = 1 } = query;
+      const numericSize = +size;
+      const numericPage = +page;
+
+      const [episodes, count] = await this.episodeRepository.findAndCount({
+        where: { season: { id: seasonId } },
+        select: [
+          'id',
+          'title',
+          'synopsis',
+          'duration',
+          'episodeNumber',
+          'episodeUrl',
+          'coverUrl',
+          'createdAt',
+          'createdAt',
+        ],
+        take: numericSize,
+        skip: (numericPage - 1) * numericSize,
+      });
+
+      const totalPages = numericSize === 0 ? 1 : Math.ceil(count / numericSize);
+
+      return {
+        count,
+        totalPages,
+        currentPage: page,
+        results: episodes,
+      };
+    } catch (error) {
+      throw ErrorManager.createSignatureError(error.message);
     }
   }
 }

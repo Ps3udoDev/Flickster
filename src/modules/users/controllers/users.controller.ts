@@ -22,13 +22,15 @@ import { AuthGuard } from 'src/modules/auth/guards/auth.guard';
 import { OptionalAuthGuard } from 'src/modules/auth/guards/optional-auth.guard';
 import { ProfileAuthorizationGuard } from 'src/modules/auth/guards/profile-authorization.guard';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiBody,
   ApiConsumes,
-  ApiOperation,
+  ApiOkResponse,
   ApiQuery,
   ApiResponse,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
 @ApiTags('Users')
@@ -179,7 +181,6 @@ export class UsersController {
     return await this.userService.findUserById(id, loggedId);
   }
 
-  @ApiOperation({ summary: 'Update user profile' })
   @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -240,6 +241,38 @@ export class UsersController {
     }
   }
 
+  @ApiBearerAuth()
+  @ApiUnauthorizedResponse({
+    status: 401,
+    description: 'Missing Authorization header or Token expired',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number' },
+        message: { type: 'string' },
+        error: { type: 'string' },
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid input syntax for type uuid',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string' },
+      },
+    },
+  })
+  @ApiOkResponse({
+    description: 'User successfully deleted',
+    schema: {
+      type: 'object',
+      properties: {
+        raw: { type: 'array' },
+        affected: { type: 'number' },
+      },
+    },
+  })
   @Delete(':id')
   @UseGuards(AuthGuard, ProfileAuthorizationGuard)
   async deleteUser(@Param('id') id: string, @Request() req: any) {
