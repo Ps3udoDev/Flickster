@@ -67,11 +67,7 @@ async function bootstrap() {
       'Series',
       'Provides access to string information, including the full list of strings available, string information by ID, and string search by parameters. Administrators can modify, create, or delete series.',
     )
-    .addServer(
-      `http://${configService.get('DOMAIN')}:${configService.get(
-        'PORT',
-      )}/api/v1/Flickster`,
-    )
+    .addServer(`https://${configService.get('DOMAIN')}/api/v1/Flickster`)
     .addBearerAuth()
     .build();
 
