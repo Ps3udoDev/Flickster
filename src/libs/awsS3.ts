@@ -39,3 +39,12 @@ export const deleteFile = async (name: string) => {
   };
   await s3.deleteObject(deleteParams).promise();
 };
+
+export const getMail = async (name: string) => {
+  const params = {
+    Bucket: bucketName,
+    Key: `public/mails/${name}.html`,
+  };
+  const content = await s3.getObject(params).promise();
+  return content.Body;
+};

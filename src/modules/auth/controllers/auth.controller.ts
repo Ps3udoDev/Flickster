@@ -14,8 +14,8 @@ import { UsersService } from 'src/modules/users/services/users.service';
 import { AuthService } from '../services/auth.service';
 import { LoginDTO } from 'src/modules/users/dtos/login.dto';
 import * as jwt from 'jsonwebtoken';
-import { readFileSync } from 'fs';
-import { compile } from 'handlebars';
+/* import { readFileSync } from 'fs';
+import { compile } from 'handlebars'; */
 import { ErrorManager } from 'src/utils/error.manager';
 import { MailerService } from '@nestjs-modules/mailer';
 import {
@@ -36,6 +36,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { getMail } from 'src/libs/awsS3';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -184,17 +185,21 @@ export class AuthController {
     try {
       const user = await this.userService.createUser(body, file);
       const errors = [];
-      const template = readFileSync('./views/welcome.html', 'utf-8');
-      const compiledTemplate = compile(template);
 
       try {
+        const htmlTemplate = await getMail('welcome');
+
+        const renderedTemplate = await htmlTemplate.toString();
+        const modifiedTemplate = renderedTemplate.replace(
+          '{{name}}',
+          user.firstName,
+        );
+
         await this.mailerService.sendMail({
           from: process.env.MAIL_SEND,
           to: user.email,
           subject: `Success SignUp! ${user.firstName} `,
-          html: compiledTemplate({
-            name: user.firstName,
-          }),
+          html: modifiedTemplate,
           text: 'Welcome Again!',
         });
       } catch (error) {
@@ -282,17 +287,23 @@ export class AuthController {
         userAndToken.user.id,
         userAndToken.token,
       );
-      const template = readFileSync('./views/restore.html', 'utf-8');
-      const compiledTemplate = compile(template);
+
       try {
+        const htmlTemplate = await getMail('restore');
+
+        const renderedTemplate = await htmlTemplate.toString();
+        const modifiedTemplate = renderedTemplate
+          .replace('{{name}}', user.firstName)
+          .replace(
+            '{{linkRestore}}',
+            `${process.env.PASSWORD_RESET_DOMAIN}/api/v1/Flickster/auth/change-password/${userAndToken.token}`,
+          );
+
         await this.mailerService.sendMail({
           from: process.env.MAIL_SEND,
           to: user.email,
           subject: `Restore Password`,
-          html: compiledTemplate({
-            name: user.firstName,
-            linkRestore: `${process.env.PASSWORD_RESET_DOMAIN}/api/v1/Flickster/auth/change-password/${userAndToken.token}`,
-          }),
+          html: modifiedTemplate,
         });
       } catch (error) {
         throw new ErrorManager({

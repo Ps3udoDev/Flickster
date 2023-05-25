@@ -208,6 +208,7 @@ export class UsersService {
       if (file) {
         if (userToUpdate.imageURL) {
           const awsDomain = process.env.AWS_DOMAIN;
+          console.log(awsDomain);
           const imageKey = userToUpdate.imageURL.replace(awsDomain, '');
           await deleteFile(imageKey);
         }
